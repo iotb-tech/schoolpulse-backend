@@ -4,6 +4,7 @@ import errorMiddleware from "./middleware/error.middleware.js";
 import loggerMiddleware from "./middleware/logger.middleware.js";
 import studentRouter from "./modules/students/route.js";
 import classRouter from "./modules/classes/route.js";
+import academicSessionRouter from "./modules/academic-sessions/route.js";
 
 const app = express();
 
@@ -11,7 +12,7 @@ app.use(loggerMiddleware);
 app.use(express.json());
 app.use("/api/students", studentRouter);
 app.use("/api/classes", classRouter);
-
+app.use("/api/academic-sessions", academicSessionRouter);
 
 app.get("/health", (_req, res) => {
   res.status(200).json({
