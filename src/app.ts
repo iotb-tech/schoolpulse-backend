@@ -3,13 +3,15 @@ import prisma from "./config/prisma.js";
 import errorMiddleware from "./middleware/error.middleware.js";
 import loggerMiddleware from "./middleware/logger.middleware.js";
 import studentRouter from "./modules/students/route.js";
-
+import classRouter from "./modules/classes/route.js";
 
 const app = express();
 
 app.use(loggerMiddleware);
-app.use("/api/students", studentRouter);
 app.use(express.json());
+app.use("/api/students", studentRouter);
+app.use("/api/classes", classRouter);
+
 
 app.get("/health", (_req, res) => {
   res.status(200).json({

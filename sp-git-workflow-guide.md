@@ -1,18 +1,3 @@
-😂 You're right — **we are NOT going back to Decision 29 yet.** Let's finish the Git workflow properly first.
-
-And yes: **your branch is supposed to exist locally and remotely while you're working on that feature.** After the PR is merged, however, the feature branch can be deleted. Keeping it is optional, but for a clean repository, we should normally delete it after merging.
-
-Your current situation is:
-
-```text
-feature/adeshina/project-setup   ← still exists locally + remotely
-              ↓
-             PR
-              ↓
-             dev                 ← README is now here
-```
-
-That's completely fine.
 
 ---
 

@@ -1,9 +1,11 @@
-import prisma from "../../config/prisma.js";
+import prisma from "../../config/prisma.js"
+import { Prisma } from "../../generated/prisma/client.js";
 import AppError from "../../utils/app-error.js";
 import type { CreateStudentInput } from "./validation.js";
 
 export async function createStudent(input: CreateStudentInput) {
-  return prisma.$transaction(async (tx) => {
+  try {
+  return await prisma.$transaction(async (tx) => {
     // 1. Generate sequential IDs safely inside the transaction.
     const nextId = async (sequenceName: string, prefix: string) => {
       const rows = await tx.$queryRaw<{ value: number }[]>`
@@ -139,4 +141,24 @@ export async function createStudent(input: CreateStudentInput) {
 
     return student;
   });
+  
+} catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error.code === "P2002") {
+        throw new AppError(
+          "A record with one of these unique values already exists.",
+          409
+        );
+      }
+
+      if (error.code === "P2025") {
+        throw new AppError(
+          "A related record could not be found.",
+          404
+        );
+      }
+    }
+
+    throw error;
+  }
 }
