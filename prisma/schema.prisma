@@ -1,0 +1,510 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================================
+// ENUMS
+// ============================================
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum BloodGroup {
+  A_POSITIVE
+  A_NEGATIVE
+  B_POSITIVE
+  B_NEGATIVE
+  AB_POSITIVE
+  AB_NEGATIVE
+  O_POSITIVE
+  O_NEGATIVE
+}
+
+enum Genotype {
+  AA
+  AS
+  SS
+  AC
+  SC
+  OTHER
+}
+
+enum StudentStatus {
+  ACTIVE
+  INACTIVE
+  GRADUATED
+  TRANSFERRED
+  WITHDRAWN
+}
+
+enum ParentRelationship {
+  PARENT
+  GUARDIAN
+  FATHER
+  MOTHER
+}
+
+enum EnrollmentStatus {
+  ACTIVE
+  COMPLETED
+  TRANSFERRED
+  WITHDRAWN
+}
+
+enum TeacherAssignmentStatus {
+  ACTIVE
+  ENDED
+}
+
+enum AdminRole {
+  SUPER_ADMIN
+  LOWER_ADMIN
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  EXCUSED
+}
+
+enum ExcusedReason {
+  SICK
+  LATE
+  OTHER
+}
+
+enum NotificationChannel {
+  EMAIL
+  SMS
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  DELIVERED
+  FAILED
+}
+
+//===========================================
+// To allocate next ID number safely. student and parent IDs will have seperate counters.
+//=============================================
+
+model IdSequence {
+  name  String @id
+  value Int    @default(0)
+}
+
+// ============================================
+// STUDENTS AND PARENTS
+// ============================================
+
+model Student {
+  id        String @id @default(cuid())
+  studentId String @unique
+
+  firstName  String
+  middleName String?
+  lastName   String
+
+  dateOfBirth DateTime?
+  gender      Gender?
+
+  bloodGroup BloodGroup?
+  genotype   Genotype?
+
+  admissionDate DateTime?
+  status        StudentStatus @default(ACTIVE)
+
+  parentId String
+  parent   Parent @relation(fields: [parentId], references: [id], onDelete: Restrict)
+
+  enrollments   StudentClass[]
+  attendance    Attendance[]
+  notifications Notification[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([parentId])
+  @@index([lastName, firstName])
+  @@index([status])
+}
+
+model Parent {
+  id       String @id @default(cuid())
+  parentId String @unique
+
+  firstName    String
+  lastName     String
+  relationship ParentRelationship
+
+  email String @unique
+  phone String
+
+  homeAddress String?
+  workAddress String?
+  workPhone   String?
+
+  isActive Boolean @default(true)
+
+  students      Student[]
+  notifications Notification[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([lastName, firstName])
+  @@index([isActive])
+}
+
+// ============================================
+// CLASSES AND ACADEMIC CALENDAR
+// ============================================
+
+model Class {
+  id String @id @default(cuid())
+
+  name     String
+  section  String?
+  isActive Boolean @default(true)
+
+  enrollments         StudentClass[]
+  teacherAssignments  TeacherClass[]
+  classAccount        ClassAccount?
+  attendance          Attendance[]
+  announcementClasses AnnouncementClass[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([name, section])
+  @@index([isActive])
+}
+
+model AcademicSession {
+  id   String @id @default(cuid())
+  name String @unique
+
+  startDate DateTime
+  endDate   DateTime
+  isCurrent Boolean  @default(false)
+
+  enrollments        StudentClass[]
+  teacherAssignments TeacherClass[]
+  terms              AcademicTerm[]
+  calendar           SchoolCalendar[]
+  attendance         Attendance[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isCurrent])
+  @@index([startDate, endDate])
+}
+
+model AcademicTerm {
+  id String @id @default(cuid())
+
+  name      TermName
+  startDate DateTime
+  endDate   DateTime
+  isCurrent Boolean  @default(false)
+
+  sessionId String
+  session   AcademicSession @relation(fields: [sessionId], references: [id], onDelete: Restrict)
+
+  attendance Attendance[]
+  calendar   SchoolCalendar[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([sessionId, name])
+  @@index([sessionId, isCurrent])
+}
+
+enum TermName {
+  FIRST
+  SECOND
+  THIRD
+}
+
+model SchoolCalendar {
+  id String @id @default(cuid())
+
+  date        DateTime
+  title       String?
+  isSchoolDay Boolean  @default(false)
+
+  sessionId String
+  session   AcademicSession @relation(fields: [sessionId], references: [id], onDelete: Restrict)
+
+  termId String?
+  term   AcademicTerm? @relation(fields: [termId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([sessionId, date])
+  @@index([date])
+  @@index([termId])
+}
+
+// ============================================
+// STUDENT ENROLLMENT
+// ============================================
+
+model StudentClass {
+  id String @id @default(cuid())
+
+  studentId String
+  classId   String
+  sessionId String
+  status    EnrollmentStatus @default(ACTIVE)
+
+  student Student         @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  class   Class           @relation(fields: [classId], references: [id], onDelete: Restrict)
+  session AcademicSession @relation(fields: [sessionId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([studentId, sessionId])
+  @@index([classId, sessionId])
+  @@index([sessionId, status])
+}
+
+// ============================================
+// TEACHERS AND ASSIGNMENTS
+// ============================================
+
+model Teacher {
+  id        String @id @default(cuid())
+  teacherId String @unique
+
+  firstName  String
+  middleName String?
+  lastName   String
+
+  phone String?
+  email String? @unique
+
+  isActive Boolean @default(true)
+
+  assignments TeacherClass[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([lastName, firstName])
+  @@index([isActive])
+}
+
+model TeacherClass {
+  id String @id @default(cuid())
+
+  teacherId String
+  classId   String
+  sessionId String
+
+  status TeacherAssignmentStatus @default(ACTIVE)
+
+  assignedAt DateTime  @default(now())
+  endedAt    DateTime?
+
+  teacher Teacher         @relation(fields: [teacherId], references: [id], onDelete: Restrict)
+  class   Class           @relation(fields: [classId], references: [id], onDelete: Restrict)
+  session AcademicSession @relation(fields: [sessionId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([classId, sessionId, status])
+  @@index([teacherId, sessionId, status])
+}
+
+// ============================================
+// CLASS LOGIN ACCOUNTS AND ADMIN ACCOUNTS
+// ============================================
+
+model ClassAccount {
+  id       String @id @default(cuid())
+  username String @unique
+  password String
+
+  classId String @unique
+  class   Class  @relation(fields: [classId], references: [id], onDelete: Restrict)
+
+  isActive Boolean @default(true)
+
+  auditLogs AuditLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive])
+}
+
+model Admin {
+  id String @id @default(cuid())
+
+  username String? @unique
+  email    String? @unique
+  password String
+
+  role     AdminRole
+  isActive Boolean   @default(true)
+
+  announcements Announcement[]
+  auditLogs     AuditLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([role, isActive])
+}
+
+// ============================================
+// ATTENDANCE
+// ============================================
+
+model Attendance {
+  id String @id @default(cuid())
+
+  studentId String
+  classId   String
+  sessionId String
+  termId    String
+
+  date   DateTime
+  status AttendanceStatus @default(PRESENT)
+
+  excusedReason     ExcusedReason?
+  excusedReasonNote String?
+
+  student Student         @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  class   Class           @relation(fields: [classId], references: [id], onDelete: Restrict)
+  session AcademicSession @relation(fields: [sessionId], references: [id], onDelete: Restrict)
+  term    AcademicTerm    @relation(fields: [termId], references: [id], onDelete: Restrict)
+
+  notifications Notification[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([studentId, date])
+  @@index([classId, date])
+  @@index([sessionId, date])
+  @@index([termId, date])
+  @@index([status, date])
+}
+
+// ============================================
+// NOTIFICATIONS
+// ============================================
+
+model Notification {
+  id String @id @default(cuid())
+
+  studentId    String
+  parentId     String
+  attendanceId String
+
+  channel       NotificationChannel
+  status        NotificationStatus  @default(PENDING)
+  attemptNumber Int
+
+  attemptedAt  DateTime?
+  deliveredAt  DateTime?
+  errorMessage String?
+
+  student    Student    @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  parent     Parent     @relation(fields: [parentId], references: [id], onDelete: Restrict)
+  attendance Attendance @relation(fields: [attendanceId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([attendanceId, channel, attemptNumber])
+  @@index([studentId, createdAt])
+  @@index([parentId, createdAt])
+  @@index([status, channel])
+}
+
+// ============================================
+// ANNOUNCEMENTS
+// ============================================
+
+model Announcement {
+  id String @id @default(cuid())
+
+  title   String
+  message String
+
+  isSchoolWide Boolean   @default(false)
+  isPublished  Boolean   @default(false)
+  publishedAt  DateTime?
+
+  creatorId String
+  creator   Admin               @relation(fields: [creatorId], references: [id], onDelete: Restrict)
+  classes   AnnouncementClass[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([creatorId])
+  @@index([isPublished, publishedAt])
+}
+
+model AnnouncementClass {
+  id String @id @default(cuid())
+
+  announcementId String
+  classId        String
+
+  announcement Announcement @relation(fields: [announcementId], references: [id], onDelete: Restrict)
+  class        Class        @relation(fields: [classId], references: [id], onDelete: Restrict)
+
+  @@unique([announcementId, classId])
+  @@index([classId])
+}
+
+// ============================================
+// AUDIT LOGS
+// ============================================
+
+model AuditLog {
+  id String @id @default(cuid())
+
+  action     String
+  entityType String
+  entityId   String
+
+  performedByAdminId        String?
+  performedByClassAccountId String?
+
+  description String?
+
+  performedByAdmin        Admin?        @relation(fields: [performedByAdminId], references: [id], onDelete: Restrict)
+  performedByClassAccount ClassAccount? @relation(fields: [performedByClassAccountId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([performedByAdminId, createdAt])
+  @@index([performedByClassAccountId, createdAt])
+  @@index([action, createdAt])
+}
