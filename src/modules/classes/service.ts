@@ -52,3 +52,27 @@ export async function createClass(input: CreateClassInput) {
     throw error;
   }
 }
+
+
+export async function listClasses() {
+  return await prisma.class.findMany({
+    orderBy: [
+      { name: "asc" },
+      { section: "asc" },
+    ],
+  });
+}
+
+
+export async function getClassById(id: string) {
+  const schoolClass = await prisma.class.findUnique({
+    where: { id },
+  });
+
+  if (!schoolClass) {
+    throw new AppError("Class not found.", 404);
+  }
+
+  return schoolClass;
+}
+
