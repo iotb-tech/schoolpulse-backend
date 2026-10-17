@@ -39,6 +39,7 @@ The schema was designed around the MVP workflow and the Data Analytics
 team's initial data domains. The first proposed domains were:
 
 -   Students
+-   Teacher
 -   Classes
 -   Parents/guardians
 -   Attendance
@@ -355,15 +356,13 @@ date. It references the student, class, academic session, and term.
 
   -----------------------------------------------------------------------
   Attendance status       Excused reason          Note
-  ----------------------- ----------------------- -----------------------
-  `PRESENT`               Must be null            Must be null
+  -----------------------  -----------------------
+  `PRESENT`               Must be null           
 
-  `ABSENT`                Must be null            Must be null
+  `ABSENT`                Must be null          
 
-  `EXCUSED`               Required                Required for `OTHER`;
-                                                  optional for `SICK` or
-                                                  `LATE`
-  -----------------------------------------------------------------------
+  `EXCUSED`          optional for `SICK` or `LATE`  Required for `OTHER`;
+  -----------------------------------------------
 
 These cross-field requirements must be validated by the backend before
 saving.
