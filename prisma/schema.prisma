@@ -13,3 +13,65 @@ datasource db {
   
 }
 
+model Teacher {
+  // Server-generated public ID, e.g. TCH-0001.
+  id          String             @id
+  firstName   String
+  lastName    String
+  email       String?            @unique
+  phone       String?
+  isActive    Boolean            @default(true)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  assignments TeacherAssignment[]
+
+  @@index([lastName, firstName])
+}
+
+model Class {
+  id          String              @id @default(cuid())
+  name        String
+  code        String              @unique
+  isActive    Boolean             @default(true)
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  assignments TeacherAssignment[]
+}
+
+model Session {
+  id          String              @id @default(cuid())
+  name        String              @unique
+  startDate   DateTime?
+  endDate     DateTime?
+  isActive    Boolean             @default(true)
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  assignments TeacherAssignment[]
+}
+
+
+model TeacherAssignment {
+  id         String    @id @default(cuid())
+  teacherId  String
+  classId    String
+  sessionId  String
+  assignedAt DateTime  @default(now())
+  endedAt    DateTime?
+  createdAt  DateTime  @default(now())
+
+  teacher Teacher @relation(fields: [teacherId], references: [id], onDelete: Restrict)
+  class   Class   @relation(fields: [classId], references: [id], onDelete: Restrict)
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Restrict)
+
+  @@index([teacherId, endedAt])
+  @@index([classId, endedAt])
+  @@index([sessionId])
+}
+
+// One row per sequence. Updating `value` atomically produces unique teacher IDs.
+model IdSequence {
+  name      String   @id
+  value     Int      @default(0)
+  updatedAt DateTime @updatedAt
+}
+
